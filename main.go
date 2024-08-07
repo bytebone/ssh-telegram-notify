@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"bytebone/ssh-notify/internal/config"
-	"bytebone/ssh-notify/internal/ip"
-	"bytebone/ssh-notify/internal/senders/telegram"
-	"bytebone/ssh-notify/internal/utils"
+	"bytebone/ssh-telegram-notify/internal/config"
+	"bytebone/ssh-telegram-notify/internal/ip"
+	"bytebone/ssh-telegram-notify/internal/senders/telegram"
+	"bytebone/ssh-telegram-notify/internal/utils"
 
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"

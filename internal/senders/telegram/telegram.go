@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	"bytebone/ssh-notify/internal/utils"
+	"bytebone/ssh-telegram-notify/internal/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
