@@ -1,0 +1,13 @@
+{
+    "message_backend": "telegram|gotify",
+    "backend_settings": {
+        "telegram": {
+            "token": "",
+            "chat_id": ""
+        },
+        "gotify": {
+            "token": "",
+            "url": ""
+        }
+    }
+}

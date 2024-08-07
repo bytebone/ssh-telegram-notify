@@ -1,13 +1,7 @@
-package tgsend
-
-// read config file
-// determine host os (win/posix)
-// find config file
-// read config file
-// parse bot token, group id
-// send telegram message
+package telegram
 
 import (
+	"bytebone/ssh-notify/internal/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +17,7 @@ type Config struct {
 	GroupID  string
 }
 
-var configPath string = getHomeDir() + "/.config/tgsend/config.json"
+var configPath string = utils.GetHomeDir() + "/.config/tgsend/config.json"
 
 func SendMessage(message string) error {
 	configFile, err := os.Open(configPath)
@@ -61,7 +55,7 @@ func SendMessage(message string) error {
 	res, err := http.PostForm(url, data)
 	log.Debug(url)
 	log.Debug(data)
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != 200 {
 		return fmt.Errorf("%s", res.Status)
 	}
 	return err
@@ -72,14 +66,6 @@ func readConfig(f *os.File) (decodedConfig Config, err error) {
 	decodedConfig = Config{}
 	err = decoder.Decode(&decodedConfig)
 	return
-}
-
-func getHomeDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return homeDir
 }
 
 func CreateEmptyConfig() error {

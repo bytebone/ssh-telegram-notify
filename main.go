@@ -1,14 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"justrainer/ssh-telegram-notify/tgsend"
-	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"bytebone/ssh-notify/internal/config"
+	"bytebone/ssh-notify/internal/ip"
+	"bytebone/ssh-notify/internal/senders/telegram"
+	"bytebone/ssh-notify/internal/utils"
 
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
@@ -29,6 +31,9 @@ func init() {
 }
 
 func main() {
+	var configPath = utils.GetHomeDir() + "/.config/ssh-notify/config.json"
+	config.DecodeConfig(configPath)
+
 	log.Debugf("Reading Values")
 	hostname := getHostname()
 	loginDate := getLoginDate()
@@ -39,20 +44,10 @@ func main() {
 	message := constructMessage(hostname, loginDate, user, loginIP)
 
 	log.Debug("Sending Telegram Message")
-	err := tgsend.SendMessage(message)
+	err := telegram.SendMessage(message)
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-type ipLocation struct {
-	Status        string `json:"status"`
-	StatusMessage string `json:"message"`
-	IP            string `json:"query"`
-	Country       string `json:"country"`
-	CountryCode   string `json:"countryCode"`
-	City          string `json:"city"`
-	ISP           string `json:"isp"`
 }
 
 func getHostname() (hostname string) {
@@ -79,27 +74,6 @@ func getLoginIP() (loginIP string) {
 	return
 }
 
-func geoLocateIP(ip string) (ipLocation, error) {
-	// send ip to http://ip-api.com/json/ and interpret returned json
-	url := "http://ip-api.com/json/" + ip + "?fields=57875"
-	response, err := http.Get(url)
-	if err != nil {
-		return ipLocation{}, err
-	}
-	if response.StatusCode != http.StatusOK {
-		return ipLocation{}, fmt.Errorf("%s", response.Status)
-	}
-	defer response.Body.Close()
-
-	var location ipLocation
-	err = json.NewDecoder(response.Body).Decode(&location)
-	if err != nil {
-		return ipLocation{}, err
-	}
-
-	return location, nil
-}
-
 func constructMessage(hostname string, loginDate string, user string, ipAddress string) (message string) {
 	message = fmt.Sprintf("*Session started on %s*\n\n", hostname)
 
@@ -112,15 +86,15 @@ func constructMessage(hostname string, loginDate string, user string, ipAddress 
 	}
 
 	if ipAddress != "" {
-		ipLocation, err := geoLocateIP(ipAddress)
+		ipLocation, err := ip.GeoLocateIP(ipAddress)
 		if err != nil {
 			// can be both http and json errors
 			log.Warn(err)
 			return
 		}
 
-		if ipLocation.Status != "success" {
-			message += fmt.Sprintf("%v IP Address is %s\n", emoji.Warning, ipLocation.StatusMessage)
+		if ipLocation.Status != 200 {
+			message += fmt.Sprintf("%v Couldn't resolve IP\n", emoji.Warning)
 			return
 		}
 
