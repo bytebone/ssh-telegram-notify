@@ -3,50 +3,22 @@ package config
 import (
 	"encoding/json"
 	"os"
-
-	log "github.com/sirupsen/logrus"
 )
 
-type Config struct {
-	MessageBackend  string `json:"message_backend"`
-	BackendSettings struct {
-		Telegram struct {
-			Token  string `json:"token"`
-			ChatID string `json:"chat_id"`
-		} `json:"telegram"`
-		Gotify struct {
-			Token string `json:"token"`
-			Url   string `json:"url"`
-		}
-	} `json:"backend_settings"`
-}
-
-func DecodeConfig(configPath string) (*Config, error) {
+func Decode(configPath string) (*Config, error) {
 	configFile, err := os.Open(configPath)
 	if err != nil {
-		log.Warn("No config file found, creating one")
-		err = setupConfig(configPath)
-		if err != nil {
-			return nil, err
-		}
 		return nil, err
 	}
 	defer configFile.Close()
 
-	config, err := readConfig(configFile)
+	decoder := json.NewDecoder(configFile)
+	decodedConfig := &Config{}
+	err = decoder.Decode(&decodedConfig)
 	if err != nil {
 		return nil, err
 	}
-
-	return config, nil
-}
-
-func readConfig(f *os.File) (decodedConfig *Config, err error) {
-	decoder := json.NewDecoder(f)
-	decodedConfig = &Config{}
-	err = decoder.Decode(&decodedConfig)
-
-	return
+	return decodedConfig, nil
 }
 
 func validateConfig(config *Config) error {
@@ -62,4 +34,19 @@ func setupConfig(configPath string) error {
 	// ask which backend to use
 	// ask for required values depending on selected backend
 	// write data to file
+}
+
+type Config struct {
+	MessageBackends MessageBackends `json:"message_backends"`
+}
+
+type MessageBackends struct {
+	Telegram MessageBackendTelegram `json:"telegram"`
+}
+
+type MessageBackendTelegram struct {
+	Enabled         bool   `json:"enabled"`
+	Token           string `json:"token"`
+	ChatID          string `json:"chat_id"`
+	MessageThreadID string `json:"message_thread_id"`
 }

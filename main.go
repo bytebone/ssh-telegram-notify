@@ -32,7 +32,10 @@ func init() {
 
 func main() {
 	var configPath = utils.GetHomeDir() + "/.config/ssh-notify/config.json"
-	config.DecodeConfig(configPath)
+	config, err := config.Decode(configPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Debugf("Reading Values")
 	hostname := getHostname()
@@ -40,13 +43,13 @@ func main() {
 	user := getConnectedUser()
 	loginIP := getLoginIP()
 
-	log.Debug("Constructing Telegram Message")
+	log.Debug("Constructing Message")
 	message := constructMessage(hostname, loginDate, user, loginIP)
 
-	log.Debug("Sending Telegram Message")
-	err := telegram.SendMessage(message)
+	log.Debug("Sending Message through enabled backends")
+	err = telegram.SendMessage(&config.MessageBackends.Telegram, &telegram.SendMessageParams{Message: message, IP: loginIP})
 	if err != nil {
-		log.Fatal(err)
+		log.Warn(err)
 	}
 }
 
@@ -86,7 +89,7 @@ func constructMessage(hostname string, loginDate string, user string, ipAddress 
 	}
 
 	if ipAddress != "" {
-		ipLocation, err := ip.GeoLocateIP(ipAddress)
+		ipLocation, err := ip.Locate(ipAddress)
 		if err != nil {
 			// can be both http and json errors
 			log.Warn(err)

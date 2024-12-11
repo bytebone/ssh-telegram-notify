@@ -1,57 +1,36 @@
 package telegram
 
 import (
-	"bytebone/ssh-telegram-notify/internal/utils"
-	"encoding/json"
+	"bytebone/ssh-telegram-notify/internal/config"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type Config struct {
-	BotToken string
-	GroupID  string
-}
-
-var configPath string = utils.GetHomeDir() + "/.config/tgsend/config.json"
-
-func SendMessage(message string) error {
-	configFile, err := os.Open(configPath)
-	if err != nil {
-		log.Warn("No config file found, creating one")
-		err = CreateEmptyConfig()
-		if err != nil {
-			return err
-		}
-		return err
-	}
-	defer configFile.Close()
-
-	config, err := readConfig(configFile)
-	if err != nil {
-		return err
-	}
-
+func SendMessage(config *config.MessageBackendTelegram, params *SendMessageParams) error {
 	switch {
-	case config.BotToken == "":
+	case config.Token == "":
 		return errors.New("no telegram bot token found")
-	case config.GroupID == "":
-		return errors.New("no telegram group id found")
-	case config.BotToken == "" && config.GroupID == "":
+	case config.ChatID == "":
+		return errors.New("no telegram chat id found")
+	case config.Token == "" && config.ChatID == "":
 		return errors.New("no telegram bot token or group id found")
 	}
 
 	data := url.Values{
-		"chat_id":    {config.GroupID},
-		"text":       {message},
-		"parse_mode": {"Markdown"},
+		"chat_id":      {config.ChatID},
+		"text":         {params.Message},
+		"parse_mode":   {"Markdown"},
+		"reply_markup": {fmt.Sprintf(`{"inline_keyboard":[[{"text": "Show on Shodan","url":"https://www.shodan.io/host/%s"}]]}`, params.IP)},
+	}
+	if config.MessageThreadID != "" {
+		data.Add("message_thread_id", config.MessageThreadID)
 	}
 
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", config.BotToken)
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", config.Token)
 	res, err := http.PostForm(url, data)
 	log.Debug(url)
 	log.Debug(data)
@@ -61,19 +40,13 @@ func SendMessage(message string) error {
 	return err
 }
 
-func readConfig(f *os.File) (decodedConfig Config, err error) {
-	decoder := json.NewDecoder(f)
-	decodedConfig = Config{}
-	err = decoder.Decode(&decodedConfig)
-	return
+type SendMessageParams struct {
+	Message string
+	IP      string
+	// Location IPLocation
 }
 
-func CreateEmptyConfig() error {
-	configFile, err := os.Create(configPath)
-	if err != nil {
-		return err
-	}
-	_, err = configFile.Write([]byte(`{"BotToken":"","GroupID":""}`))
-	configFile.Close()
-	return err
+type IPLocation struct {
+	Latitude  float32
+	Longitude float32
 }
